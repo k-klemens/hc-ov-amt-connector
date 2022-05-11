@@ -1,41 +1,98 @@
 package at.kk.msc.hcov.plugin.amt;
 
+import at.kk.msc.hcov.plugin.amt.util.MTurkClientCreator;
+import at.kk.msc.hcov.plugin.amt.util.MTurkClientRequestCreator;
 import at.kk.msc.hcov.sdk.crowdsourcing.platform.ICrowdsourcingConnectorPlugin;
 import at.kk.msc.hcov.sdk.crowdsourcing.platform.model.HitStatus;
 import at.kk.msc.hcov.sdk.crowdsourcing.platform.model.RawResult;
 import at.kk.msc.hcov.sdk.plugin.PluginConfigurationNotSetException;
 import at.kk.msc.hcov.sdk.verificationtask.model.VerificationTask;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
+import software.amazon.awssdk.services.mturk.MTurkClient;
 
 @Component
 public class AmtCrowdsourcingConnector implements ICrowdsourcingConnectorPlugin {
 
+  private Map<String, Object> configuration;
+
   @Override
-  public Map<UUID, String> publishTasks(List<VerificationTask> list) throws PluginConfigurationNotSetException {
+  public Map<UUID, String> publishTasks(List<VerificationTask> verificationTasks) throws PluginConfigurationNotSetException {
+    validateConfigurationSetOrThrow();
+    MTurkClient mTurkClient = MTurkClientCreator.getMTurkClient((boolean) getConfiguration().getOrDefault("SANDBOX", false));
+
+    Map<UUID, String> createdHits = new HashMap<>();
+    String hitTypeId = null;
+    for(VerificationTask verificationTask : verificationTasks) {
+      if(hitTypeId == null) {
+        hitTypeId = mTurkClient.createHITType(
+            MTurkClientRequestCreator.createHitTypeRequest(getConfiguration(), verificationTask.getVerificationName())
+        ).hitTypeId();
+      }
+
+      String hitId = mTurkClient.createHITWithHITType(
+          MTurkClientRequestCreator.createHitWithHitTypeRequest(verificationTask, hitTypeId, getConfiguration())
+      ).hit().hitId();
+      createdHits.put(verificationTask.getOntologyElementId(), hitId);
+    }
+
+    return createdHits;
+  }
+
+  @Override
+  public Map<String, HitStatus> getStatusForHits(List<String> hitIds) throws PluginConfigurationNotSetException {
+    validateConfigurationSetOrThrow();
     throw new UnsupportedOperationException("Not yet implemented!");
   }
 
   @Override
-  public Map<String, HitStatus> getStatusForHits(List<String> list) throws PluginConfigurationNotSetException {
+  public Map<String, List<RawResult>> getResultsForHits(List<String> hitIds) throws PluginConfigurationNotSetException {
+    validateConfigurationSetOrThrow();
     throw new UnsupportedOperationException("Not yet implemented!");
   }
 
   @Override
-  public Map<String, List<RawResult>> getResultsForHits(List<String> list) throws PluginConfigurationNotSetException {
-    throw new UnsupportedOperationException("Not yet implemented!");
-  }
-
-  @Override
-  public void setConfiguration(Map<String, Object> map) {
-
+  public void setConfiguration(Map<String, Object> configuration) {
+    this.configuration = new HashMap<>(configuration);
   }
 
   @Override
   public Map<String, Object> getConfiguration() {
-    throw new UnsupportedOperationException("Not yet implemented!");
+    return this.configuration;
+  }
+
+  @Override
+  public void validateConfigurationSetOrThrow() throws PluginConfigurationNotSetException {
+    ICrowdsourcingConnectorPlugin.super.validateConfigurationSetOrThrow();
+    if(!getConfiguration().containsKey("Description")) {
+      throw new PluginConfigurationNotSetException("Configuration entry 'Description' is required!");
+    }
+    if(!getConfiguration().containsKey("Reward")) {
+      throw new PluginConfigurationNotSetException("Configuration entry 'Reward' is required!");
+    }
+    if(!getConfiguration().containsKey("AssignmentDurationInSeconds")) {
+      throw new PluginConfigurationNotSetException("Configuration entry 'AssignmentDurationInSeconds' is required!");
+    } else if(!StringUtils.isNumeric(getConfiguration().get("AssignmentDurationInSeconds").toString())) {
+      throw new PluginConfigurationNotSetException("Configuration entry 'AssignmentDurationInSeconds' must be numeric!");
+    }
+    if(!getConfiguration().containsKey("Keywords")) {
+      throw new PluginConfigurationNotSetException("Configuration entry 'Keywords' is required!");
+    }
+    if(!getConfiguration().containsKey("LifetimeInSeconds")) {
+      throw new PluginConfigurationNotSetException("Configuration entry 'LifetimeInSeconds' is required!");
+    }else if(!StringUtils.isNumeric(getConfiguration().get("LifetimeInSeconds").toString())) {
+      throw new PluginConfigurationNotSetException("Configuration entry 'LifetimeInSeconds' must be numeric!");
+    }
+    if(!getConfiguration().containsKey("MaxAssignments")) {
+      throw new PluginConfigurationNotSetException("Configuration entry 'MaxAssignments' is required!");
+    } else if(!StringUtils.isNumeric(getConfiguration().get("MaxAssignments").toString())) {
+      throw new PluginConfigurationNotSetException("Configuration entry 'MaxAssignments' must be numeric!");
+    }
+
   }
 
   @Override
