@@ -11,9 +11,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.services.mturk.MTurkClient;
+import software.amazon.awssdk.services.mturk.model.GetHitRequest;
+import software.amazon.awssdk.services.mturk.model.GetHitResponse;
 
 @Component
 public class AmtCrowdsourcingConnector implements ICrowdsourcingConnectorPlugin {
@@ -46,7 +49,19 @@ public class AmtCrowdsourcingConnector implements ICrowdsourcingConnectorPlugin 
   @Override
   public Map<String, HitStatus> getStatusForHits(List<String> hitIds) throws PluginConfigurationNotSetException {
     validateConfigurationSetOrThrow();
-    throw new UnsupportedOperationException("Not yet implemented!");
+
+    MTurkClient mTurkClient = MTurkClientCreator.getMTurkClient((boolean) getConfiguration().getOrDefault("SANDBOX", false));
+
+    return hitIds.stream()
+        .map(hitId -> mTurkClient.getHIT(GetHitRequest.builder().hitId(hitId).build()))
+        .map(GetHitResponse::hit)
+        .map(hit -> new HitStatus(hit.hitId(), hit.maxAssignments(), hit.numberOfAssignmentsCompleted()))
+        .collect(
+            Collectors.toMap(
+            HitStatus::getCrowdsourcingId,
+            hitStatus -> hitStatus
+            )
+        );
   }
 
   @Override

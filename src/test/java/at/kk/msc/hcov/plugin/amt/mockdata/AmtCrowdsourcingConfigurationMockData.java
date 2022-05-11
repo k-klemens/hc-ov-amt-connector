@@ -1,9 +1,9 @@
-package at.kk.msc.hcov.plugin.amt.testdata;
+package at.kk.msc.hcov.plugin.amt.mockdata;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public class AmtCrowdsourcingConfigurationTestData {
+public class AmtCrowdsourcingConfigurationMockData {
 
   public static Map<String, Object> getAmtCrowdsourcingConfigurationDataMock() {
     Map<String, Object> givenConfiguration = new HashMap<>();

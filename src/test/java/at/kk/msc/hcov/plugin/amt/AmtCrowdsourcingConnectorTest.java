@@ -1,12 +1,15 @@
 package at.kk.msc.hcov.plugin.amt;
 
-import static at.kk.msc.hcov.plugin.amt.testdata.AmtCrowdsourcingConfigurationTestData.getAmtCrowdsourcingConfigurationDataMock;
-import static at.kk.msc.hcov.plugin.amt.testdata.VerificationTaskMockData.EXPECTED_PUBLISHED_TASK_MAPPINGS;
-import static at.kk.msc.hcov.plugin.amt.testdata.VerificationTaskMockData.FIRST_CS_MOCK_ID;
-import static at.kk.msc.hcov.plugin.amt.testdata.VerificationTaskMockData.MOCKED_HIT_TYPE_ID;
-import static at.kk.msc.hcov.plugin.amt.testdata.VerificationTaskMockData.MOCK_FIRST_CREATE_HIT_WITH_HIT_TYPE_REQUEST;
-import static at.kk.msc.hcov.plugin.amt.testdata.VerificationTaskMockData.MOCK_SECOND_CREATE_HIT_WITH_HIT_TYPE_REQUEST;
-import static at.kk.msc.hcov.plugin.amt.testdata.VerificationTaskMockData.SECOND_CS_MOCK_ID;
+import static at.kk.msc.hcov.plugin.amt.mockdata.AmtCrowdsourcingConfigurationMockData.getAmtCrowdsourcingConfigurationDataMock;
+import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.EXPECTED_HIT_STATUS_MAP;
+import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.EXPECTED_PUBLISHED_TASK_MAPPINGS;
+import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.FIRST_CS_MOCK_ID;
+import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.MOCKED_HIT_TYPE_ID;
+import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.MOCK_FIRST_CREATE_HIT_WITH_HIT_TYPE_REQUEST;
+import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.MOCK_FIRST_HIT_RESPONSE;
+import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.MOCK_SECOND_CREATE_HIT_WITH_HIT_TYPE_REQUEST;
+import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.MOCK_SECOND_HIT_RESPONSE;
+import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.SECOND_CS_MOCK_ID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
@@ -17,8 +20,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import at.kk.msc.hcov.plugin.amt.testdata.VerificationTaskMockData;
+import at.kk.msc.hcov.plugin.amt.mockdata.VerificationTaskMockData;
 import at.kk.msc.hcov.plugin.amt.util.MTurkClientCreator;
+import at.kk.msc.hcov.sdk.crowdsourcing.platform.model.HitStatus;
 import at.kk.msc.hcov.sdk.plugin.PluginConfigurationNotSetException;
 import at.kk.msc.hcov.sdk.verificationtask.model.VerificationTask;
 import java.util.List;
@@ -34,6 +38,7 @@ import software.amazon.awssdk.services.mturk.MTurkClient;
 import software.amazon.awssdk.services.mturk.model.CreateHitTypeRequest;
 import software.amazon.awssdk.services.mturk.model.CreateHitTypeResponse;
 import software.amazon.awssdk.services.mturk.model.CreateHitWithHitTypeResponse;
+import software.amazon.awssdk.services.mturk.model.GetHitRequest;
 import software.amazon.awssdk.services.mturk.model.HIT;
 
 public class AmtCrowdsourcingConnectorTest {
@@ -129,8 +134,6 @@ public class AmtCrowdsourcingConnectorTest {
             HIT.builder().hitId(SECOND_CS_MOCK_ID).build()
         ).build());
 
-
-
     try (MockedStatic<MTurkClientCreator> mockedClientCreator = mockStatic(MTurkClientCreator.class)) {
       mockedClientCreator.when(() -> MTurkClientCreator.getMTurkClient(true)).thenReturn(mTurkClientMock);
 
@@ -148,6 +151,32 @@ public class AmtCrowdsourcingConnectorTest {
       mockedClientCreator.verify(() -> MTurkClientCreator.getMTurkClient(eq(true)), times(1));
       verify(mTurkClientMock, times(1)).createHITWithHITType(eq(MOCK_FIRST_CREATE_HIT_WITH_HIT_TYPE_REQUEST()));
       verify(mTurkClientMock, times(1)).createHITWithHITType(eq(MOCK_SECOND_CREATE_HIT_WITH_HIT_TYPE_REQUEST()));
+    }
+  }
+
+  @Test
+  public void testGetStatusForHits() throws PluginConfigurationNotSetException {
+    MTurkClient mTurkClientMock = mock(MTurkClient.class);
+
+    when(mTurkClientMock.getHIT(eq(GetHitRequest.builder().hitId(FIRST_CS_MOCK_ID).build())))
+        .thenReturn(MOCK_FIRST_HIT_RESPONSE());
+    when(mTurkClientMock.getHIT(eq(GetHitRequest.builder().hitId(SECOND_CS_MOCK_ID).build())))
+        .thenReturn(MOCK_SECOND_HIT_RESPONSE());
+
+
+    try (MockedStatic<MTurkClientCreator> mockedClientCreator = mockStatic(MTurkClientCreator.class)) {
+      mockedClientCreator.when(() -> MTurkClientCreator.getMTurkClient(true)).thenReturn(mTurkClientMock);
+
+      // given
+      target.setConfiguration(getAmtCrowdsourcingConfigurationDataMock());
+
+      // when
+      Map<String, HitStatus> actual = target.getStatusForHits(List.of(FIRST_CS_MOCK_ID, SECOND_CS_MOCK_ID));
+
+      // then
+      assertThat(actual)
+          .hasSize(2)
+          .containsAllEntriesOf(EXPECTED_HIT_STATUS_MAP());
     }
   }
 
