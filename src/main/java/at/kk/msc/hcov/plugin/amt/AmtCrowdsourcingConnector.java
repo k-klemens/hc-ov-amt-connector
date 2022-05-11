@@ -15,8 +15,10 @@ import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.services.mturk.MTurkClient;
+import software.amazon.awssdk.services.mturk.model.Assignment;
 import software.amazon.awssdk.services.mturk.model.GetHitRequest;
 import software.amazon.awssdk.services.mturk.model.GetHitResponse;
+import software.amazon.awssdk.services.mturk.model.ListAssignmentsForHitRequest;
 
 @Component
 public class AmtCrowdsourcingConnector implements ICrowdsourcingConnectorPlugin {
@@ -67,7 +69,17 @@ public class AmtCrowdsourcingConnector implements ICrowdsourcingConnectorPlugin 
   @Override
   public Map<String, List<RawResult>> getResultsForHits(List<String> hitIds) throws PluginConfigurationNotSetException {
     validateConfigurationSetOrThrow();
-    throw new UnsupportedOperationException("Not yet implemented!");
+    MTurkClient mTurkClient = MTurkClientCreator.getMTurkClient((boolean) getConfiguration().getOrDefault("SANDBOX", false));
+
+    Map<String, List<RawResult>> returnMap = new HashMap<>();
+    for(String hitId : hitIds) {
+      List<Assignment> assignments = mTurkClient.listAssignmentsForHIT(ListAssignmentsForHitRequest.builder().hitId(hitId).build()).assignments();
+      List<RawResult> rawResults = assignments.stream()
+          .map(assignment -> new RawResult(assignment.assignmentId(), assignment.hitId(), assignment.workerId(), assignment.answer()))
+          .toList();
+      returnMap.put(hitId, rawResults);
+    }
+    return returnMap;
   }
 
   @Override
