@@ -29,7 +29,11 @@ public class MTurkClientMockData {
   public static CreateHitWithHitTypeRequest MOCK_FIRST_CREATE_HIT_WITH_HIT_TYPE_REQUEST() {
     return CreateHitWithHitTypeRequest.builder()
         .hitTypeId(MOCKED_HIT_TYPE_ID)
-        .question(VerificationTaskMockData.EXPECTED_FIRST_TEMPLATE_WITH_CONTEXT)
+        .question(
+            "<HTMLQuestion xmlns=\"http://mechanicalturk.amazonaws.com/AWSMechanicalTurkDataSchemas/2011-11-11/HTMLQuestion.xsd\"><HTMLContent><![CDATA["+
+            VerificationTaskMockData.EXPECTED_FIRST_TEMPLATE_WITH_CONTEXT +
+                "]]></HTMLContent><FrameHeight>0</FrameHeight></HTMLQuestion>"
+        )
         .lifetimeInSeconds(604800L)
         .maxAssignments(5)
         .build();
@@ -38,7 +42,11 @@ public class MTurkClientMockData {
   public static CreateHitWithHitTypeRequest MOCK_SECOND_CREATE_HIT_WITH_HIT_TYPE_REQUEST() {
     return CreateHitWithHitTypeRequest.builder()
         .hitTypeId(MOCKED_HIT_TYPE_ID)
-        .question(VerificationTaskMockData.EXPECTED_SECOND_TEMPLATE_WITH_CONTEXT)
+        .question(
+            "<HTMLQuestion xmlns=\"http://mechanicalturk.amazonaws.com/AWSMechanicalTurkDataSchemas/2011-11-11/HTMLQuestion.xsd\"><HTMLContent><![CDATA["+
+            VerificationTaskMockData.EXPECTED_SECOND_TEMPLATE_WITH_CONTEXT +
+            "]]></HTMLContent><FrameHeight>0</FrameHeight></HTMLQuestion>"
+        )
         .lifetimeInSeconds(604800L)
         .maxAssignments(5)
         .build();

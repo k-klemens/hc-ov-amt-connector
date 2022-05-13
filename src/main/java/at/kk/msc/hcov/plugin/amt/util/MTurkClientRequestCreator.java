@@ -1,7 +1,6 @@
 package at.kk.msc.hcov.plugin.amt.util;
 
 import at.kk.msc.hcov.sdk.verificationtask.model.VerificationTask;
-import java.net.CacheRequest;
 import java.util.Map;
 import software.amazon.awssdk.services.mturk.model.CreateHitTypeRequest;
 import software.amazon.awssdk.services.mturk.model.CreateHitWithHitTypeRequest;
@@ -17,6 +16,7 @@ public class MTurkClientRequestCreator {
         .reward(pluginConfiguration.get("Reward").toString())
         .assignmentDurationInSeconds(Long.parseLong(pluginConfiguration.get("AssignmentDurationInSeconds").toString()))
         .keywords(pluginConfiguration.get("Keywords").toString())
+        .autoApprovalDelayInSeconds(30L)
         .build();
   }
 
@@ -25,9 +25,15 @@ public class MTurkClientRequestCreator {
   ){
     return CreateHitWithHitTypeRequest.builder()
         .hitTypeId(hitTypeId)
-        .question(verificationTask.getTaskHtml())
+        .question(wrapInHtmlQuestionTag(verificationTask.getTaskHtml()))
         .lifetimeInSeconds(Long.parseLong(pluginConfiguration.get("LifetimeInSeconds").toString()))
         .maxAssignments(Integer.parseInt(pluginConfiguration.get("MaxAssignments").toString()))
         .build();
+  }
+
+  private static String wrapInHtmlQuestionTag(String htmlQuestion){
+    String openingTag = "<HTMLQuestion xmlns=\"http://mechanicalturk.amazonaws.com/AWSMechanicalTurkDataSchemas/2011-11-11/HTMLQuestion.xsd\"><HTMLContent><![CDATA[";
+    String closingTag = "]]></HTMLContent><FrameHeight>0</FrameHeight></HTMLQuestion>";
+    return openingTag + htmlQuestion + closingTag;
   }
 }

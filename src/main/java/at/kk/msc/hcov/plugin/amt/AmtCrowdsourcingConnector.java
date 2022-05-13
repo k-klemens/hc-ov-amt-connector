@@ -28,12 +28,12 @@ public class AmtCrowdsourcingConnector implements ICrowdsourcingConnectorPlugin 
   @Override
   public Map<UUID, String> publishTasks(List<VerificationTask> verificationTasks) throws PluginConfigurationNotSetException {
     validateConfigurationSetOrThrow();
-    MTurkClient mTurkClient = MTurkClientCreator.getMTurkClient((boolean) getConfiguration().getOrDefault("SANDBOX", false));
+    MTurkClient mTurkClient = MTurkClientCreator.getMTurkClient(Boolean.parseBoolean(getConfiguration().getOrDefault("SANDBOX", "false").toString()));
 
     Map<UUID, String> createdHits = new HashMap<>();
     String hitTypeId = null;
-    for(VerificationTask verificationTask : verificationTasks) {
-      if(hitTypeId == null) {
+    for (VerificationTask verificationTask : verificationTasks) {
+      if (hitTypeId == null) {
         hitTypeId = mTurkClient.createHITType(
             MTurkClientRequestCreator.createHitTypeRequest(getConfiguration(), verificationTask.getVerificationName())
         ).hitTypeId();
@@ -52,7 +52,7 @@ public class AmtCrowdsourcingConnector implements ICrowdsourcingConnectorPlugin 
   public Map<String, HitStatus> getStatusForHits(List<String> hitIds) throws PluginConfigurationNotSetException {
     validateConfigurationSetOrThrow();
 
-    MTurkClient mTurkClient = MTurkClientCreator.getMTurkClient((boolean) getConfiguration().getOrDefault("SANDBOX", false));
+    MTurkClient mTurkClient = MTurkClientCreator.getMTurkClient(Boolean.parseBoolean(getConfiguration().getOrDefault("SANDBOX", "false").toString()));
 
     return hitIds.stream()
         .map(hitId -> mTurkClient.getHIT(GetHitRequest.builder().hitId(hitId).build()))
@@ -60,8 +60,8 @@ public class AmtCrowdsourcingConnector implements ICrowdsourcingConnectorPlugin 
         .map(hit -> new HitStatus(hit.hitId(), hit.maxAssignments(), hit.numberOfAssignmentsCompleted()))
         .collect(
             Collectors.toMap(
-            HitStatus::getCrowdsourcingId,
-            hitStatus -> hitStatus
+                HitStatus::getCrowdsourcingId,
+                hitStatus -> hitStatus
             )
         );
   }
@@ -69,11 +69,12 @@ public class AmtCrowdsourcingConnector implements ICrowdsourcingConnectorPlugin 
   @Override
   public Map<String, List<RawResult>> getResultsForHits(List<String> hitIds) throws PluginConfigurationNotSetException {
     validateConfigurationSetOrThrow();
-    MTurkClient mTurkClient = MTurkClientCreator.getMTurkClient((boolean) getConfiguration().getOrDefault("SANDBOX", false));
+    MTurkClient mTurkClient = MTurkClientCreator.getMTurkClient(Boolean.parseBoolean(getConfiguration().getOrDefault("SANDBOX", "false").toString()));
 
     Map<String, List<RawResult>> returnMap = new HashMap<>();
-    for(String hitId : hitIds) {
-      List<Assignment> assignments = mTurkClient.listAssignmentsForHIT(ListAssignmentsForHitRequest.builder().hitId(hitId).build()).assignments();
+    for (String hitId : hitIds) {
+      List<Assignment> assignments =
+          mTurkClient.listAssignmentsForHIT(ListAssignmentsForHitRequest.builder().hitId(hitId).build()).assignments();
       List<RawResult> rawResults = assignments.stream()
           .map(assignment -> new RawResult(assignment.assignmentId(), assignment.hitId(), assignment.workerId(), assignment.answer()))
           .toList();
@@ -95,35 +96,34 @@ public class AmtCrowdsourcingConnector implements ICrowdsourcingConnectorPlugin 
   @Override
   public void validateConfigurationSetOrThrow() throws PluginConfigurationNotSetException {
     ICrowdsourcingConnectorPlugin.super.validateConfigurationSetOrThrow();
-    if(!getConfiguration().containsKey("Description")) {
+    if (!getConfiguration().containsKey("Description")) {
       throw new PluginConfigurationNotSetException("Configuration entry 'Description' is required!");
     }
-    if(!getConfiguration().containsKey("Reward")) {
+    if (!getConfiguration().containsKey("Reward")) {
       throw new PluginConfigurationNotSetException("Configuration entry 'Reward' is required!");
     }
-    if(!getConfiguration().containsKey("AssignmentDurationInSeconds")) {
+    if (!getConfiguration().containsKey("AssignmentDurationInSeconds")) {
       throw new PluginConfigurationNotSetException("Configuration entry 'AssignmentDurationInSeconds' is required!");
-    } else if(!StringUtils.isNumeric(getConfiguration().get("AssignmentDurationInSeconds").toString())) {
+    } else if (!StringUtils.isNumeric(getConfiguration().get("AssignmentDurationInSeconds").toString())) {
       throw new PluginConfigurationNotSetException("Configuration entry 'AssignmentDurationInSeconds' must be numeric!");
     }
-    if(!getConfiguration().containsKey("Keywords")) {
+    if (!getConfiguration().containsKey("Keywords")) {
       throw new PluginConfigurationNotSetException("Configuration entry 'Keywords' is required!");
     }
-    if(!getConfiguration().containsKey("LifetimeInSeconds")) {
+    if (!getConfiguration().containsKey("LifetimeInSeconds")) {
       throw new PluginConfigurationNotSetException("Configuration entry 'LifetimeInSeconds' is required!");
-    }else if(!StringUtils.isNumeric(getConfiguration().get("LifetimeInSeconds").toString())) {
+    } else if (!StringUtils.isNumeric(getConfiguration().get("LifetimeInSeconds").toString())) {
       throw new PluginConfigurationNotSetException("Configuration entry 'LifetimeInSeconds' must be numeric!");
     }
-    if(!getConfiguration().containsKey("MaxAssignments")) {
+    if (!getConfiguration().containsKey("MaxAssignments")) {
       throw new PluginConfigurationNotSetException("Configuration entry 'MaxAssignments' is required!");
-    } else if(!StringUtils.isNumeric(getConfiguration().get("MaxAssignments").toString())) {
+    } else if (!StringUtils.isNumeric(getConfiguration().get("MaxAssignments").toString())) {
       throw new PluginConfigurationNotSetException("Configuration entry 'MaxAssignments' must be numeric!");
     }
-
   }
 
   @Override
   public boolean supports(String s) {
-    return "AMT_CROWDSOURCING_CONNECTOR".equalsIgnoreCase(s);
+    return "AMT_CROWDSOURCING_CONNECTOR" .equalsIgnoreCase(s);
   }
 }
