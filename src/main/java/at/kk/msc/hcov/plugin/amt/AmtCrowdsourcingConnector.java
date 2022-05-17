@@ -7,12 +7,16 @@ import at.kk.msc.hcov.sdk.crowdsourcing.platform.model.HitStatus;
 import at.kk.msc.hcov.sdk.crowdsourcing.platform.model.RawResult;
 import at.kk.msc.hcov.sdk.plugin.PluginConfigurationNotSetException;
 import at.kk.msc.hcov.sdk.verificationtask.model.VerificationTask;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.services.mturk.MTurkClient;
 import software.amazon.awssdk.services.mturk.model.Assignment;
@@ -23,20 +27,23 @@ import software.amazon.awssdk.services.mturk.model.ListAssignmentsForHitRequest;
 @Component
 public class AmtCrowdsourcingConnector implements ICrowdsourcingConnectorPlugin {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(AmtCrowdsourcingConnector.class);
+
   private Map<String, Object> configuration;
 
   @Override
   public Map<UUID, String> publishTasks(List<VerificationTask> verificationTasks) throws PluginConfigurationNotSetException {
     validateConfigurationSetOrThrow();
-    MTurkClient mTurkClient = MTurkClientCreator.getMTurkClient(Boolean.parseBoolean(getConfiguration().getOrDefault("SANDBOX", "false").toString()));
+    MTurkClient mTurkClient =
+        MTurkClientCreator.getMTurkClient(Boolean.parseBoolean(getConfiguration().getOrDefault("SANDBOX", "false").toString()));
 
     Map<UUID, String> createdHits = new HashMap<>();
     String hitTypeId = null;
+    Optional<String> qualificationTestId = Optional.empty();
     for (VerificationTask verificationTask : verificationTasks) {
       if (hitTypeId == null) {
-        hitTypeId = mTurkClient.createHITType(
-            MTurkClientRequestCreator.createHitTypeRequest(getConfiguration(), verificationTask.getVerificationName())
-        ).hitTypeId();
+        hitTypeId = createHitType(mTurkClient, qualificationTestId, verificationTask);
+        qualificationTestId = createQualificationTestIfRequired(mTurkClient, verificationTask);
       }
 
       String hitId = mTurkClient.createHITWithHITType(
@@ -52,7 +59,8 @@ public class AmtCrowdsourcingConnector implements ICrowdsourcingConnectorPlugin 
   public Map<String, HitStatus> getStatusForHits(List<String> hitIds) throws PluginConfigurationNotSetException {
     validateConfigurationSetOrThrow();
 
-    MTurkClient mTurkClient = MTurkClientCreator.getMTurkClient(Boolean.parseBoolean(getConfiguration().getOrDefault("SANDBOX", "false").toString()));
+    MTurkClient mTurkClient =
+        MTurkClientCreator.getMTurkClient(Boolean.parseBoolean(getConfiguration().getOrDefault("SANDBOX", "false").toString()));
 
     return hitIds.stream()
         .map(hitId -> mTurkClient.getHIT(GetHitRequest.builder().hitId(hitId).build()))
@@ -69,7 +77,8 @@ public class AmtCrowdsourcingConnector implements ICrowdsourcingConnectorPlugin 
   @Override
   public Map<String, List<RawResult>> getResultsForHits(List<String> hitIds) throws PluginConfigurationNotSetException {
     validateConfigurationSetOrThrow();
-    MTurkClient mTurkClient = MTurkClientCreator.getMTurkClient(Boolean.parseBoolean(getConfiguration().getOrDefault("SANDBOX", "false").toString()));
+    MTurkClient mTurkClient =
+        MTurkClientCreator.getMTurkClient(Boolean.parseBoolean(getConfiguration().getOrDefault("SANDBOX", "false").toString()));
 
     Map<String, List<RawResult>> returnMap = new HashMap<>();
     for (String hitId : hitIds) {
@@ -124,6 +133,36 @@ public class AmtCrowdsourcingConnector implements ICrowdsourcingConnectorPlugin 
 
   @Override
   public boolean supports(String s) {
-    return "AMT_CROWDSOURCING_CONNECTOR" .equalsIgnoreCase(s);
+    return "AMT_CROWDSOURCING_CONNECTOR".equalsIgnoreCase(s);
+  }
+
+  private Optional<String> createQualificationTestIfRequired(MTurkClient mTurkClient, VerificationTask verificationTask) {
+    if (getConfiguration().containsKey("QUALIFICATION_TEST_URI") && getConfiguration().containsKey("ANSWER_KEY_URI")) {
+      try {
+        String qualificationTestId =
+            mTurkClient.createQualificationType(
+                MTurkClientRequestCreator.createQualificationTypeRequest(
+                    verificationTask, getConfiguration()
+                )
+
+            ).qualificationType().qualificationTypeId();
+        LOGGER.info(
+            "Create qualificaiton test for verification " + verificationTask.getVerificationName() + " with id=" + qualificationTestId
+        );
+        return Optional.of(qualificationTestId);
+      } catch (IOException e) {
+        LOGGER.error("Could not load qualifcation test file! " + e.getMessage(), e);
+      }
+    }
+    return Optional.empty();
+  }
+
+  private String createHitType(MTurkClient mTurkClient, Optional<String> qualificationTestId, VerificationTask verificationTask) {
+    String hitTypeId;
+    hitTypeId = mTurkClient.createHITType(
+        MTurkClientRequestCreator.createHitTypeRequest(getConfiguration(), verificationTask.getVerificationName(), qualificationTestId)
+    ).hitTypeId();
+    LOGGER.info("Created HIT Type with id="+hitTypeId);
+    return hitTypeId;
   }
 }

@@ -1,12 +1,14 @@
 package at.kk.msc.hcov.plugin.amt;
 
 import static at.kk.msc.hcov.plugin.amt.mockdata.AmtCrowdsourcingConfigurationMockData.getAmtCrowdsourcingConfigurationDataMock;
+import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.EXPECTED_CREATE_QUALIFICATION_TYPE_REQUEST;
 import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.EXPECTED_FIRST_RAW_RESULTS;
 import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.EXPECTED_HIT_STATUS_MAP;
 import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.EXPECTED_PUBLISHED_TASK_MAPPINGS;
 import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.EXPECTED_SECOND_RAW_RESULTS;
 import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.FIRST_CS_MOCK_ID;
 import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.MOCKED_HIT_TYPE_ID;
+import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.MOCKED_QUALIFICATION_TEST_ID;
 import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.MOCK_FIRST_ASSIGNMENTS_FOR_HIT;
 import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.MOCK_FIRST_CREATE_HIT_WITH_HIT_TYPE_REQUEST;
 import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.MOCK_FIRST_HIT_RESPONSE;
@@ -20,6 +22,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -43,9 +46,12 @@ import software.amazon.awssdk.services.mturk.MTurkClient;
 import software.amazon.awssdk.services.mturk.model.CreateHitTypeRequest;
 import software.amazon.awssdk.services.mturk.model.CreateHitTypeResponse;
 import software.amazon.awssdk.services.mturk.model.CreateHitWithHitTypeResponse;
+import software.amazon.awssdk.services.mturk.model.CreateQualificationTypeRequest;
+import software.amazon.awssdk.services.mturk.model.CreateQualificationTypeResponse;
 import software.amazon.awssdk.services.mturk.model.GetHitRequest;
 import software.amazon.awssdk.services.mturk.model.HIT;
 import software.amazon.awssdk.services.mturk.model.ListAssignmentsForHitRequest;
+import software.amazon.awssdk.services.mturk.model.QualificationType;
 
 public class AmtCrowdsourcingConnectorTest {
 
@@ -157,6 +163,56 @@ public class AmtCrowdsourcingConnectorTest {
       mockedClientCreator.verify(() -> MTurkClientCreator.getMTurkClient(eq(true)), times(1));
       verify(mTurkClientMock, times(1)).createHITWithHITType(eq(MOCK_FIRST_CREATE_HIT_WITH_HIT_TYPE_REQUEST()));
       verify(mTurkClientMock, times(1)).createHITWithHITType(eq(MOCK_SECOND_CREATE_HIT_WITH_HIT_TYPE_REQUEST()));
+      verify(mTurkClientMock, never()).createQualificationType(any(CreateQualificationTypeRequest.class));
+      verify(mTurkClientMock, times(1)).createHITType(any(CreateHitTypeRequest.class));
+    }
+  }
+
+  @Test
+  public void testPublishTasks_withQualificationTest() throws PluginConfigurationNotSetException {
+    MTurkClient mTurkClientMock = mock(MTurkClient.class);
+    when(mTurkClientMock.createHITType(any(CreateHitTypeRequest.class)))
+        .thenReturn(CreateHitTypeResponse.builder().hitTypeId(MOCKED_HIT_TYPE_ID).build());
+
+    when(mTurkClientMock.createQualificationType(eq(EXPECTED_CREATE_QUALIFICATION_TYPE_REQUEST())))
+        .thenReturn(
+            CreateQualificationTypeResponse.builder().qualificationType(
+                QualificationType.builder().qualificationTypeId(MOCKED_QUALIFICATION_TEST_ID).build()
+            ).build()
+        );
+
+    when(mTurkClientMock.createHITWithHITType(eq(MOCK_FIRST_CREATE_HIT_WITH_HIT_TYPE_REQUEST())))
+        .thenReturn(CreateHitWithHitTypeResponse.builder().hit(
+            HIT.builder().hitId(FIRST_CS_MOCK_ID).build()
+        ).build());
+
+    when(mTurkClientMock.createHITWithHITType(eq(MOCK_SECOND_CREATE_HIT_WITH_HIT_TYPE_REQUEST())))
+        .thenReturn(CreateHitWithHitTypeResponse.builder().hit(
+            HIT.builder().hitId(SECOND_CS_MOCK_ID).build()
+        ).build());
+
+    try (MockedStatic<MTurkClientCreator> mockedClientCreator = mockStatic(MTurkClientCreator.class)) {
+      mockedClientCreator.when(() -> MTurkClientCreator.getMTurkClient(true)).thenReturn(mTurkClientMock);
+
+      // given
+      Map<String, Object> amtConfiguration = getAmtCrowdsourcingConfigurationDataMock();
+      amtConfiguration.put("QUALIFICATION_TEST_URI", "src/test/resources/mocked-qualificaiton-test.xml");
+      amtConfiguration.put("ANSWER_KEY_URI", "src/test/resources/mocked-answer-key.xml");
+      target.setConfiguration(amtConfiguration);
+      List<VerificationTask> givenVerificationTasks = VerificationTaskMockData.MOCK_VERIFICATION_TASKS();
+
+      // when
+      Map<UUID, String> actual = target.publishTasks(givenVerificationTasks);
+
+      // then
+      assertThat(actual)
+          .hasSize(2)
+          .containsAllEntriesOf(EXPECTED_PUBLISHED_TASK_MAPPINGS());
+      mockedClientCreator.verify(() -> MTurkClientCreator.getMTurkClient(eq(true)), times(1));
+      verify(mTurkClientMock, times(1)).createHITWithHITType(eq(MOCK_FIRST_CREATE_HIT_WITH_HIT_TYPE_REQUEST()));
+      verify(mTurkClientMock, times(1)).createHITWithHITType(eq(MOCK_SECOND_CREATE_HIT_WITH_HIT_TYPE_REQUEST()));
+      verify(mTurkClientMock, times(1)).createQualificationType(eq(EXPECTED_CREATE_QUALIFICATION_TYPE_REQUEST()));
+      verify(mTurkClientMock, times(1)).createHITType(any(CreateHitTypeRequest.class));
     }
   }
 
