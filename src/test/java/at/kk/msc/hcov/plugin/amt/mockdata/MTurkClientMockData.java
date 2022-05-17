@@ -13,11 +13,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import software.amazon.awssdk.services.mturk.model.Assignment;
+import software.amazon.awssdk.services.mturk.model.Comparator;
+import software.amazon.awssdk.services.mturk.model.CreateHitTypeRequest;
 import software.amazon.awssdk.services.mturk.model.CreateHitWithHitTypeRequest;
 import software.amazon.awssdk.services.mturk.model.CreateQualificationTypeRequest;
 import software.amazon.awssdk.services.mturk.model.GetHitResponse;
 import software.amazon.awssdk.services.mturk.model.HIT;
 import software.amazon.awssdk.services.mturk.model.ListAssignmentsForHitResponse;
+import software.amazon.awssdk.services.mturk.model.QualificationRequirement;
 import software.amazon.awssdk.services.mturk.model.QualificationTypeStatus;
 
 public class MTurkClientMockData {
@@ -145,6 +148,35 @@ public class MTurkClientMockData {
         .test("test")
         .answerKey("answers")
         .testDurationInSeconds(600L)
+        .build();
+  }
+
+  public static CreateHitTypeRequest EXPECTED_HIT_TYPE_REQUEST() {
+    return CreateHitTypeRequest.builder()
+        .title(MOCKED_VERIFICATION_NAME + " Type")
+        .description("This is a sample description")
+        .reward("0")
+        .assignmentDurationInSeconds(604800L)
+        .keywords("verification,ontology,pizza")
+        .autoApprovalDelayInSeconds(30L)
+        .build();
+  }
+
+  public static CreateHitTypeRequest EXPECTED_HIT_TYPE_REQUEST_WITH_QUALIFICATION() {
+    return CreateHitTypeRequest.builder()
+        .title(MOCKED_VERIFICATION_NAME + " Type")
+        .description("This is a sample description")
+        .reward("0")
+        .assignmentDurationInSeconds(604800L)
+        .keywords("verification,ontology,pizza")
+        .autoApprovalDelayInSeconds(30L)
+        .qualificationRequirements(
+            QualificationRequirement.builder()
+                .qualificationTypeId(MOCKED_QUALIFICATION_TEST_ID)
+                .comparator(Comparator.GREATER_THAN_OR_EQUAL_TO)
+                .integerValues(80)
+                .build()
+        )
         .build();
   }
 }

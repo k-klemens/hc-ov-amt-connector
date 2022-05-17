@@ -4,6 +4,8 @@ import static at.kk.msc.hcov.plugin.amt.mockdata.AmtCrowdsourcingConfigurationMo
 import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.EXPECTED_CREATE_QUALIFICATION_TYPE_REQUEST;
 import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.EXPECTED_FIRST_RAW_RESULTS;
 import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.EXPECTED_HIT_STATUS_MAP;
+import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.EXPECTED_HIT_TYPE_REQUEST;
+import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.EXPECTED_HIT_TYPE_REQUEST_WITH_QUALIFICATION;
 import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.EXPECTED_PUBLISHED_TASK_MAPPINGS;
 import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.EXPECTED_SECOND_RAW_RESULTS;
 import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.FIRST_CS_MOCK_ID;
@@ -16,6 +18,7 @@ import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.MOCK_SECOND
 import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.MOCK_SECOND_CREATE_HIT_WITH_HIT_TYPE_REQUEST;
 import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.MOCK_SECOND_HIT_RESPONSE;
 import static at.kk.msc.hcov.plugin.amt.mockdata.MTurkClientMockData.SECOND_CS_MOCK_ID;
+import static at.kk.msc.hcov.plugin.amt.mockdata.VerificationTaskMockData.MOCK_VERIFICATION_TASKS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
@@ -27,7 +30,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import at.kk.msc.hcov.plugin.amt.mockdata.VerificationTaskMockData;
 import at.kk.msc.hcov.plugin.amt.util.MTurkClientCreator;
 import at.kk.msc.hcov.sdk.crowdsourcing.platform.model.HitStatus;
 import at.kk.msc.hcov.sdk.crowdsourcing.platform.model.RawResult;
@@ -151,7 +153,7 @@ public class AmtCrowdsourcingConnectorTest {
 
       // given
       target.setConfiguration(getAmtCrowdsourcingConfigurationDataMock());
-      List<VerificationTask> givenVerificationTasks = VerificationTaskMockData.MOCK_VERIFICATION_TASKS();
+      List<VerificationTask> givenVerificationTasks = MOCK_VERIFICATION_TASKS();
 
       // when
       Map<UUID, String> actual = target.publishTasks(givenVerificationTasks);
@@ -164,7 +166,7 @@ public class AmtCrowdsourcingConnectorTest {
       verify(mTurkClientMock, times(1)).createHITWithHITType(eq(MOCK_FIRST_CREATE_HIT_WITH_HIT_TYPE_REQUEST()));
       verify(mTurkClientMock, times(1)).createHITWithHITType(eq(MOCK_SECOND_CREATE_HIT_WITH_HIT_TYPE_REQUEST()));
       verify(mTurkClientMock, never()).createQualificationType(any(CreateQualificationTypeRequest.class));
-      verify(mTurkClientMock, times(1)).createHITType(any(CreateHitTypeRequest.class));
+      verify(mTurkClientMock, times(1)).createHITType(eq(EXPECTED_HIT_TYPE_REQUEST()));
     }
   }
 
@@ -199,7 +201,7 @@ public class AmtCrowdsourcingConnectorTest {
       amtConfiguration.put("QUALIFICATION_TEST_URI", "src/test/resources/mocked-qualificaiton-test.xml");
       amtConfiguration.put("ANSWER_KEY_URI", "src/test/resources/mocked-answer-key.xml");
       target.setConfiguration(amtConfiguration);
-      List<VerificationTask> givenVerificationTasks = VerificationTaskMockData.MOCK_VERIFICATION_TASKS();
+      List<VerificationTask> givenVerificationTasks = MOCK_VERIFICATION_TASKS();
 
       // when
       Map<UUID, String> actual = target.publishTasks(givenVerificationTasks);
@@ -212,7 +214,7 @@ public class AmtCrowdsourcingConnectorTest {
       verify(mTurkClientMock, times(1)).createHITWithHITType(eq(MOCK_FIRST_CREATE_HIT_WITH_HIT_TYPE_REQUEST()));
       verify(mTurkClientMock, times(1)).createHITWithHITType(eq(MOCK_SECOND_CREATE_HIT_WITH_HIT_TYPE_REQUEST()));
       verify(mTurkClientMock, times(1)).createQualificationType(eq(EXPECTED_CREATE_QUALIFICATION_TYPE_REQUEST()));
-      verify(mTurkClientMock, times(1)).createHITType(any(CreateHitTypeRequest.class));
+      verify(mTurkClientMock, times(1)).createHITType(eq(EXPECTED_HIT_TYPE_REQUEST_WITH_QUALIFICATION()));
     }
   }
 

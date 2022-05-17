@@ -42,8 +42,8 @@ public class AmtCrowdsourcingConnector implements ICrowdsourcingConnectorPlugin 
     Optional<String> qualificationTestId = Optional.empty();
     for (VerificationTask verificationTask : verificationTasks) {
       if (hitTypeId == null) {
-        hitTypeId = createHitType(mTurkClient, qualificationTestId, verificationTask);
         qualificationTestId = createQualificationTestIfRequired(mTurkClient, verificationTask);
+        hitTypeId = createHitType(mTurkClient, qualificationTestId, verificationTask);
       }
 
       String hitId = mTurkClient.createHITWithHITType(
